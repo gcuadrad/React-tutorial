@@ -34,28 +34,6 @@ function Square(props) {
 }
  // componente board
 class Board extends React.Component {
-  // Todas los componentes de React dónde se declare un constructor, deben contener
-  //  el parámetro props y empezar con una llamada a super(props)
-  constructor(props) {
-    super(props);
-    this.state = {
-      squares: Array(9).fill(null),
-      xIsNext: true,
-    };
-  }
-  // En react existe una convención de que hice que un método que representan eventos
-  // debe comenzar con on[NombreDelEvento] y la que maneja un evento handle[NombreDelEvento]
-  handleClick(i) {
-    const squares = this.state.squares.slice();
-    if (calculateWinner(squares) || squares[i]) {
-      return;
-    }
-    squares[i] = this.state.xIsNext ? 'X' : 'O';
-    this.setState({
-      squares: squares,
-      xIsNext: !this.state.xIsNext,
-    });
-  }
 
   // retorna un componente llamado Square al que le entregan datos, estos datos entregados
   //  se denominan props, el primer valor será el nombre que recibirán dentro del Componente
@@ -66,26 +44,18 @@ class Board extends React.Component {
       //  Pero no editarlos desde un componente hijo, es por eso que se entrega una función del padre
       // Al llamar la función esta actualizará el state desde el componente padre.
       <Square
-      value={this.state.squares[i]} // Aquí le entregamos un state
-      onClick={() => this.handleClick(i)} // Aquí le entregamos la función handleClick
+      value={this.props.squares[i]}
+      onClick={() => this.props.onClick(i)}
       />
     );
   }
 
   render() {
-    const winner = calculateWinner(this.state.squares);
-    let status;
-    if (winner) {
-      status = 'Winner: ' + winner;
-    } else {
-      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
-    }
     // Render return es el código que transforma en el contenido del DOM
     //  está escrito en una sintaxis llamada JSX
     // this.renderSquare(0) llama al método renderSquare dentro del componente
     return (
       <div>
-        <div className="status">{status}</div>
         <div className="board-row">
           {this.renderSquare(0)}
           {this.renderSquare(1)}
@@ -108,15 +78,76 @@ class Board extends React.Component {
 
 // Componente game
 class Game extends React.Component {
+  // Todas los componentes de React dónde se declare un constructor, deben contener
+  //  el parámetro props y empezar con una llamada a super(props)
+  constructor(props) {
+    super(props);
+    this.state = {
+      history: [{
+        squares: Array(9).fill(null),
+      }],
+      stepNumber: 0,
+      xIsNext: true,
+    }
+  }
+
+  // En react existe una convención de que hice que un método que representan eventos
+  // debe comenzar con on[NombreDelEvento] y la que maneja un evento handle[NombreDelEvento]
+  handleClick(i) {
+    const history = this.state.history.slice(0, this.state.stepNumber + 1);
+    const current = history[history.length - 1];
+    const squares = current.squares.slice();
+    if (calculateWinner(squares) || squares[i]) {
+      return;
+    }
+    squares[i] = this.state.xIsNext ? 'X' : 'O';
+    this.setState({
+      history: history.concat([{
+        squares: squares,
+      }]),
+      stepNumber: history.length,
+      xIsNext: !this.state.xIsNext,
+    });
+  }
+
+  jumpTo(step) {
+    this.setState({
+      stepNumber: step,
+      xIsNext: (step % 2) === 0,
+    });
+  }
+
   render() {
+    const history = this.state.history;
+    const current = history[this.state.stepNumber];
+    const winner = calculateWinner(current.squares);
+
+    const moves = history.map((step, move) => {
+      const desc = move ? 'Go to move # ' + move : 'Go to game start';
+      return (
+        <li key={move}>
+          <button onClick={() => this.jumpTo(move)}>{desc}</button>
+        </li>
+      )
+    });
+
+    let status;
+    if (winner) {
+      status = 'Winner: ' + winner;
+    } else {
+      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
+    }
     return (
       <div className="game">
         <div className="game-board">
-          <Board />
+          <Board
+           squares={current.squares}// Aquí le entregamos un state
+           onClick={(i) => this.handleClick(i)}// Aquí le entregamos la función handleClick
+          />
         </div>
         <div className="game-info">
-          <div>{/* status */}</div>
-          <ol>{/* TODO */}</ol>
+          <div>{status}</div>
+          <ol>{moves}</ol>
         </div>
       </div>
     );
@@ -131,7 +162,6 @@ ReactDOM.render(
 );
 
 function calculateWinner(squares) {
-  console.log(1111);
   const lines = [
     [0, 1, 2],
     [3, 4, 5],
